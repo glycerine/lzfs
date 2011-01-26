@@ -52,10 +52,17 @@ lzfs_xattr_get(struct inode *inode, const char *name,
 		xattr_name = strncpy(xattr_name, "security.", 9);
 		xattr_name = strncat(xattr_name, name, strlen(name));
 	}
+	else if(index==2){
+		xattr_name = kzalloc(strlen(name), GFP_KERNEL);
+		xattr_name = strncpy(xattr_name, name,strlen(name));
+	}
 	err = zfs_lookup(vp, (char *) xattr_name, &xvp, NULL, 0, NULL,
 	(struct cred *) cred, NULL, NULL, NULL);
 	kfree(xattr_name);
 	if(err) {
+		if(err == ENOENT) {
+		    return -ENODATA;
+		}
 		return -err;
 	}
 	xinode = LZFS_VTOI(xvp);
@@ -115,9 +122,9 @@ struct listxattr_buf {
 	size_t size;
 	size_t pos;
 	char *buf;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 	struct inode *inode;
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 	struct dentry *dentry;
 #endif
 };
@@ -135,11 +142,11 @@ static int listxattr_filler(void *buf, const char *name, int namelen,
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
 			const struct xattr_handler *handler;
 #endif
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 			handler = find_xattr_handler_prefix(
 					b->inode->i_sb->s_xattr,
 					name);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 			handler = find_xattr_handler_prefix(
                                         b->dentry->d_sb->s_xattr,
                                         name);
@@ -147,10 +154,10 @@ static int listxattr_filler(void *buf, const char *name, int namelen,
 			if (!handler)
 				return 0;
 			if (b->buf) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 				size = handler->list(b->inode, b->buf + b->pos,
 						b->size, name, namelen);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 				size = handler->list(b->dentry, b->buf + b->pos,
                                                 b->size, name, namelen,
 						handler->flags);
@@ -158,10 +165,10 @@ static int listxattr_filler(void *buf, const char *name, int namelen,
 				if (size > b->size)
 					return -ERANGE;
 			} else {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)				
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)				
 					size = handler->list(b->inode, NULL, 
 						0, name, namelen);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 					size = handler->list(b->dentry, NULL,
                                                 0, name, namelen, handler->flags);
 #endif
@@ -181,9 +188,9 @@ lzfs_listxattr(struct dentry *dentry, char *buffer, size_t size)
 	loff_t pos = 0;
 
 	struct listxattr_buf buf = {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 		.inode = dentry->d_inode,
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 		.dentry = dentry,
 #endif
 		.buf = buffer,
@@ -225,9 +232,9 @@ lzfs_removexattr(struct dentry *dentry, const char *name)
 
 	if (!handler)
 		return -EOPNOTSUPP;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 	return handler->set(inode, name, NULL, 0, XATTR_REPLACE);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 	return handler->set(dentry, name, NULL, 0, XATTR_REPLACE, 
 				handler->flags);
 #endif
@@ -241,9 +248,9 @@ const struct xattr_handler *lzfs_xattr_handlers[] = {
 	&lzfs_xattr_user_handler,
 #ifdef HAVE_ZPL	
 	&lzfs_xattr_trusted_handler,	// TODO
-	&lzfs_xattr_acl_access_handler,	// TODO
-	&lzfs_xattr_acl_default_handler,// TODO	
 #endif /* HAVE_ZPL */
+	&lzfs_xattr_acl_access_handler,
+	&lzfs_xattr_acl_default_handler,
 	&lzfs_xattr_security_handler,
         NULL
 };

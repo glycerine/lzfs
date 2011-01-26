@@ -18,11 +18,11 @@
  */
 #define SS_DEBUG_SUBSYS SS_USER2
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 static int
 lzfs_xattr_user_get(struct inode *inode, const char *name,
 			void *buffer, size_t size)
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 static int
 lzfs_xattr_user_get(struct dentry *dentry, const char *name,
 			void *buffer, size_t size, int type)
@@ -32,18 +32,18 @@ lzfs_xattr_user_get(struct dentry *dentry, const char *name,
 		return -EINVAL;
 	}
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)	
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)	
 	return lzfs_xattr_get(inode, name, buffer, size, 0);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 	return lzfs_xattr_get(dentry->d_inode, name, buffer, size, 0);
 #endif
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 static int      
 lzfs_xattr_user_set(struct inode *inode, const char *name,
 			const void *value, size_t size, int flags)
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 static int
 lzfs_xattr_user_set(struct dentry *dentry, const char *name,
 			const void *value, size_t size, int flags, int type)
@@ -70,9 +70,9 @@ lzfs_xattr_user_set(struct dentry *dentry, const char *name,
 		.uio_limit   = MAXOFFSET_T,
 		.uio_segflg  = UIO_SYSSPACE,
 	};
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 	dvp = LZFS_ITOV(inode);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 	dvp = LZFS_ITOV(dentry->d_inode);
 #endif
 	err = zfs_lookup(dvp, NULL, &vp, NULL, LOOKUP_XATTR | CREATE_XATTR_DIR,
@@ -111,11 +111,11 @@ lzfs_xattr_user_set(struct dentry *dentry, const char *name,
 	return err;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 static size_t
 lzfs_xattr_user_list(struct inode *inode, char *list, size_t list_size,
 			const char *name, size_t name_len)
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 static size_t
 lzfs_xattr_user_list(struct dentry *dentry, char *list, size_t list_size,
 			const char *name, size_t name_len, int type)

@@ -12,7 +12,8 @@ ssize_t
 lzfs_listxattr(struct dentry *dentry, char *buffer, size_t size);
 
 extern struct xattr_handler lzfs_xattr_user_handler;
-
+extern struct xattr_handler lzfs_xattr_acl_access_handler;
+extern struct xattr_handler lzfs_xattr_acl_default_handler;
 extern struct xattr_handler lzfs_xattr_security_handler;
 
 int
@@ -23,5 +24,15 @@ lzfs_removexattr(struct dentry *dentry, const char *name);
 
 int
 lzfs_init_security(struct dentry *dentry, struct inode *dir);
+
+int
+lzfs_vnop_setattr(struct dentry *dentry, struct iattr *iattr);
+int
+lzfs_check_acl(struct inode *inode, int mask);
+int
+lzfs_acl_chmod(struct inode *inode);
+int
+lzfs_acl_init(struct inode *inode, struct inode *dir);
+
 #endif /* _LZFS_XATTR_H */
 

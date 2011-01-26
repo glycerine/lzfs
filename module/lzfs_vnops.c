@@ -128,6 +128,7 @@ lzfs_vnop_create(struct inode *dir, struct dentry *dentry, int mode,
 	}
 	d_instantiate(dentry, LZFS_VTOI(vp));
 	se_err = lzfs_init_security(dentry, dir);
+	lzfs_acl_init(dentry->d_inode,dir);
 	if(se_err) {
 		tsd_exit();
 		SEXIT;
@@ -309,6 +310,7 @@ lzfs_vnop_symlink (struct inode *dir, struct dentry *dentry,
 	}
 	d_instantiate(dentry, LZFS_VTOI(vp));
 	se_err = lzfs_init_security(dentry, dir);
+	lzfs_acl_init(dentry->d_inode,dir);
 	if(se_err) {
  		tsd_exit();
 		SEXIT;
@@ -352,6 +354,7 @@ lzfs_vnop_mkdir(struct inode *dir, struct dentry *dentry, int mode)
 	}
 	d_instantiate(dentry, LZFS_VTOI(vp));
 	se_err = lzfs_init_security(dentry, dir);
+	lzfs_acl_init(dentry->d_inode,dir);
 	if(se_err) {
 		tsd_exit();
 		SEXIT;
@@ -428,7 +431,9 @@ lzfs_vnop_mknod(struct inode * dir, struct dentry *dentry, int mode,
 		return PTR_ERR(ERR_PTR(-err));
 	}
 	d_instantiate(dentry, LZFS_VTOI(vp));
+	init_special_inode(dentry->d_inode,mode,rdev);
 	se_err = lzfs_init_security(dentry, dir);
+	lzfs_acl_init(dentry->d_inode,dir);
 	if(se_err) {
 		tsd_exit();
 		SEXIT;
@@ -526,18 +531,15 @@ lzfs_vnop_setattr(struct dentry *dentry, struct iattr *iattr)
 
 	err = zfs_setattr(vp, vap, 0, (struct cred *)cred, NULL);
 	kfree(vap);
+	if(mask & ATTR_MODE){
+	   lzfs_acl_chmod(inode);
+	}
 	put_cred(cred);
 	tsd_exit();
 	SEXIT;
 	if (err)
 		return PTR_ERR(ERR_PTR(-err));
 	return 0;
-}
-
-int
-lzfs_vnop_permission(struct inode *inode, int mask)
-{
-	return generic_permission(inode, mask, NULL);
 }
 
 static void lzfs_put_link(struct dentry *dentry, struct nameidata *nd, void *ptr)
@@ -1036,7 +1038,7 @@ no_cached_page:
 
 /* 
  * fops->open is not needed for default operations, but in case mmap is 
- * called on an opened file we need strcut file *, save it in vnode_t
+ * called on an opened file we need struct file *, save it in vnode_t
  * */
 static int lzfs_vnop_open(struct inode *inode, struct file *file)
 {
@@ -1194,7 +1196,7 @@ const struct inode_operations zfs_inode_operations = {
 	.mknod          = lzfs_vnop_mknod,
 	.rename         = lzfs_vnop_rename,
 	.setattr        = lzfs_vnop_setattr,
-	.permission     = lzfs_vnop_permission,
+	.check_acl      = lzfs_check_acl,
 	.setxattr       = generic_setxattr,
 	.getxattr       = generic_getxattr,
 	.listxattr      = lzfs_listxattr,
@@ -1225,7 +1227,7 @@ const struct inode_operations zfs_dir_inode_operations ={
 	.mknod          = lzfs_vnop_mknod,
 	.rename         = lzfs_vnop_rename,
 	.setattr        = lzfs_vnop_setattr,
-	.permission     = lzfs_vnop_permission,
+	.check_acl      = lzfs_check_acl,
 	.setxattr       = generic_setxattr,
 	.getxattr       = generic_getxattr,
 	.listxattr      = lzfs_listxattr,
