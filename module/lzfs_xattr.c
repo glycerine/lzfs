@@ -27,14 +27,14 @@ lzfs_xattr_get(struct inode *inode, const char *name,
 	vnode_t *dvp;
 	vnode_t *xvp;
 	int err = 0;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 	struct iovec iov;
 	uio_t uio;
 	char *xattr_name = NULL;
 
 	dvp = LZFS_ITOV(inode);
 	err = zfs_lookup(dvp, NULL, &vp, NULL, LOOKUP_XATTR, NULL,
-			(struct cred *) cred, NULL, NULL, NULL);
+			(cred_t *) cred, NULL, NULL, NULL);
         if(err) {
             if(err == ENOENT) {
                 return -ENODATA;
@@ -53,7 +53,7 @@ lzfs_xattr_get(struct inode *inode, const char *name,
 		xattr_name = strncat(xattr_name, name, strlen(name));
 	}
 	err = zfs_lookup(vp, (char *) xattr_name, &xvp, NULL, 0, NULL,
-	(struct cred *) cred, NULL, NULL, NULL);
+	(cred_t *) cred, NULL, NULL, NULL);
 	kfree(xattr_name);
 	if(err) {
 		return -err;
@@ -71,7 +71,7 @@ lzfs_xattr_get(struct inode *inode, const char *name,
 	uio.uio_segflg  = UIO_SYSSPACE;
 
 	err = zfs_read(xvp, &uio, 0, (cred_t *)cred, NULL);
-	put_cred(cred);
+	(void)put_cred(cred);
 	if(err) {
 		return -err;
 	}
@@ -177,7 +177,7 @@ lzfs_listxattr(struct dentry *dentry, char *buffer, size_t size)
 	vnode_t *dvp;
 	vnode_t *vp; /* xattr dir vnode pointer */
 	int err = 0, eof;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 	loff_t pos = 0;
 
 	struct listxattr_buf buf = {
@@ -192,7 +192,7 @@ lzfs_listxattr(struct dentry *dentry, char *buffer, size_t size)
 
 	dvp = LZFS_ITOV(dentry->d_inode);
 	err = zfs_lookup(dvp, NULL, &vp, NULL, LOOKUP_XATTR, NULL,
-			(struct cred *) cred, NULL, NULL, NULL);
+			(cred_t *) cred, NULL, NULL, NULL);
 	if(err) {
 		if(err == ENOENT) {
 			err = 0;

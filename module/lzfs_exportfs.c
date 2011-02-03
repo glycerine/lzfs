@@ -109,8 +109,13 @@ struct dentry * lzfs_fh_to_dentry(struct super_block *sb, struct fid *fid,
 		return NULL;
 	}
 
-	if (LZFS_VTOI(vp))
+	if (LZFS_VTOI(vp)) {
+#ifdef HAVE_D_ALLOC_ANON		/* for kernel version < 2.6.28 */
+		dentry = d_alloc_anon(LZFS_VTOI(vp));
+#else
 		dentry = d_obtain_alias(LZFS_VTOI(vp));
+#endif
+	}	
 	return dentry;
 }
 
@@ -120,13 +125,13 @@ struct dentry *lzfs_get_parent(struct dentry *child)
 	vnode_t *vp;
 	int error = 0;
 	struct dentry *dentry = NULL;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 
 	SENTRY;
 	error = zfs_lookup(vcp, "..", &vp, NULL, 0 , NULL,
-			(struct cred *) cred, NULL, NULL, NULL);
+			(cred_t *) cred, NULL, NULL, NULL);
 
-	put_cred(cred);
+	(void)put_cred(cred);
 	tsd_exit();
 	SEXIT;
 	if (error) {
@@ -139,9 +144,15 @@ struct dentry *lzfs_get_parent(struct dentry *child)
 		}
 	}
 
-	if (LZFS_VTOI(vp))
+	if (LZFS_VTOI(vp)) {
+#ifdef HAVE_D_ALLOC_ANON		/* for kernel version < 2.6.28 */
+		dentry = d_alloc_anon(LZFS_VTOI(vp));
+#else
 		dentry = d_obtain_alias(LZFS_VTOI(vp));
+#endif
+	}	
 	return dentry;
+
 }
 
 const struct export_operations zfs_export_ops = {

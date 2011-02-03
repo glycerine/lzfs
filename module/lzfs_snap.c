@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <lzfs_inode.h>
 #include <spl-debug.h>
+#include <linux/version.h>
 
 #ifdef SS_DEBUG_SUBSYS
 #undef SS_DEBUG_SUBSYS
@@ -191,8 +192,13 @@ snap_mountpoint_follow_link(struct dentry *dentry, struct nameidata *nd)
 	}
 	mnt->mnt_mountpoint = dentry;
 	ASSERT(nd);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,27)
+	rc = do_add_mount(mnt, nd,
+	nd->path.mnt->mnt_flags | MNT_READONLY, NULL);
+#else
 	rc = do_add_mount(mnt, &nd->path,
 	nd->path.mnt->mnt_flags | MNT_READONLY, NULL);
+#endif	
 	switch (rc) {
 	case 0:
 		path_put(&nd->path);
@@ -200,11 +206,21 @@ snap_mountpoint_follow_link(struct dentry *dentry, struct nameidata *nd)
 		nd->path.dentry = dget(mnt->mnt_root);
 		break;
 	case -EBUSY: 
+		
+		nd->path.dentry = dget(mnt->mnt_root);
 		/* someone else made a mount here whilst we were busy */
+
+#ifdef HAVE_2ARGS_FOLLOW_DOWN		/* for kernel version < 2.6.31 */		
+		while (d_mountpoint(nd->path.dentry) &&
+			follow_down(&mnt, &nd->path.dentry)) {
+			;	
+		 }
+#else
 		while (d_mountpoint(nd->path.dentry) &&
 			follow_down(&nd->path)) {
 			;
 		 }
+#endif
 		 rc = 0;
 	default:
 		mntput(mnt);
@@ -245,8 +261,13 @@ lzfs_snapshot_iget(struct super_block *sb, unsigned long ino)
 	vp->v_count = 1;
 	mutex_exit(&vp->v_lock);
 	inode->i_mode |= (S_IFDIR | S_IRWXU);
+#ifdef HAVE_STRUCT_CRED
 	inode->i_uid = current->cred->uid;
 	inode->i_gid = current->cred->gid;
+#else
+	inode->i_uid = current->uid;
+	inode->i_gid = current->gid;
+#endif
 	inode->i_version = 1;
 	inode->i_op = &snap_mount_dir_inode_operations;
 	inode->i_fop = &simple_dir_operations;
@@ -349,8 +370,13 @@ lzfs_zfsctl_create(vfs_t *vfsp)
 	bcopy(&now, &(vp_zfsctl_dir->v_inode.i_atime),
 	      sizeof (timestruc_t));
 	bcopy(&now,&(vp_zfsctl_dir->v_inode.i_mtime),sizeof (timestruc_t));
+#ifdef HAVE_STRUCT_CRED
 	inode_ctldir->i_uid = current->cred->uid;
 	inode_ctldir->i_gid = current->cred->gid;
+#else
+	inode_ctldir->i_uid = current->uid;
+	inode_ctldir->i_gid = current->gid;
+#endif
 	inode_ctldir->i_version = 1;
 	inode_ctldir->i_mode |= (S_IFDIR | S_IRWXU);
 	inode_ctldir->i_op = &zfsctl_dir_inode_operations;
@@ -382,8 +408,13 @@ lzfs_zfsctl_create(vfs_t *vfsp)
 	bcopy(&now,&(vp_snap_dir->v_inode.i_ctime),sizeof (timestruc_t));
 	bcopy(&now,&(vp_snap_dir->v_inode.i_atime),sizeof (timestruc_t));
 	bcopy(&now,&(vp_snap_dir->v_inode.i_mtime),sizeof (timestruc_t));
+#ifdef HAVE_STRUCT_CRED
 	inode_snapdir->i_uid = current->cred->uid;
 	inode_snapdir->i_gid = current->cred->gid;
+#else
+	inode_snapdir->i_uid = current->uid;
+	inode_snapdir->i_gid = current->gid;
+#endif
 	inode_snapdir->i_version = 1;
 	inode_snapdir->i_mode |= (S_IFDIR | S_IRWXU);
 	inode_snapdir->i_op = &snap_dir_inode_operations;

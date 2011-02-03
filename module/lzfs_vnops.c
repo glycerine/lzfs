@@ -54,15 +54,15 @@ static int lzfs_vnop_getattr(struct vfsmount *mnt, struct dentry *dentry, struct
 	struct inode *inode = dentry->d_inode;
 	vnode_t *vnode = NULL;
 	vattr_t vap;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 	int err;
 
 	SENTRY;
 	vnode = LZFS_ITOV(inode);
 
-	err = zfs_getattr(vnode, &vap, 0, (struct cred *) cred, NULL);
+	err = zfs_getattr(vnode, &vap, 0, (cred_t *) cred, NULL);
 	if (err) {
-		put_cred(cred);
+		(void)put_cred(cred);
 		tsd_exit();
 		SEXIT;
 		return PTR_ERR(ERR_PTR(-err));
@@ -83,7 +83,7 @@ static int lzfs_vnop_getattr(struct vfsmount *mnt, struct dentry *dentry, struct
 	stat->blksize = (1 << inode->i_blkbits);
 	// stat->blksize   = vap.va_blocksize;
 	//stat->blocks    = stat->size >> inode->i_blkbits;
-	put_cred(cred);
+	(void)put_cred(cred);
 	tsd_exit();
 	SEXIT;
 	return 0;
@@ -96,7 +96,7 @@ lzfs_vnop_create(struct inode *dir, struct dentry *dentry, int mode,
 	vnode_t *vp;
 	vnode_t *dvp;
 	vattr_t *vap;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 
 	int err, se_err;
 
@@ -118,8 +118,8 @@ lzfs_vnop_create(struct inode *dir, struct dentry *dentry, int mode,
 	dvp = LZFS_ITOV(dir);
 
 	err = zfs_create(dvp, (char *)dentry->d_name.name, vap, 0, mode,
-			 &vp, (struct cred *)cred, 0, NULL, NULL);
-	put_cred(cred);
+			 &vp, (cred_t *)cred, 0, NULL, NULL);
+	(void)put_cred(cred);
 	kfree(vap);
 	if (err) {
 		tsd_exit();
@@ -168,7 +168,7 @@ lzfs_vnop_lookup(struct inode * dir, struct dentry *dentry,
 	vnode_t *vp;
 	vnode_t *dvp;
 	int err;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 
 	SENTRY;
 	err = checkname((char *)dentry->d_name.name);
@@ -177,8 +177,8 @@ lzfs_vnop_lookup(struct inode * dir, struct dentry *dentry,
 	dvp = LZFS_ITOV(dir);
 
 	err = zfs_lookup(dvp, (char *)dentry->d_name.name, &vp, NULL, 0 , NULL, 
-			(struct cred *) cred, NULL, NULL, NULL);
-	put_cred(cred);
+			(cred_t *) cred, NULL, NULL, NULL);
+	(void)put_cred(cred);
 	tsd_exit();
 	SEXIT;
 	if (err) {
@@ -204,7 +204,7 @@ lzfs_vnop_link (struct dentry *old_dentry, struct inode * dir,
 	vnode_t *svp;
 	struct inode *inode = old_dentry->d_inode;
 	char *name = (char *)dentry->d_name.name;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 	int err;
 
 	SENTRY;
@@ -228,8 +228,8 @@ lzfs_vnop_link (struct dentry *old_dentry, struct inode * dir,
 	 */
 	atomic_inc(&inode->i_count);
 
-	err = zfs_link(tdvp, svp, name, (struct cred *)cred, NULL, 0);
-	put_cred(cred);
+	err = zfs_link(tdvp, svp, name, (cred_t *)cred, NULL, 0);
+	(void)put_cred(cred);
 	if (err) {
 
 		/* Decrement the link count and release the hold in error case.
@@ -254,14 +254,14 @@ static int
 lzfs_vnop_unlink(struct inode *dir, struct dentry *dentry)
 {
 	vnode_t *dvp;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 	int err;
 
 	SENTRY;
 	dvp = LZFS_ITOV(dir);
 	err = zfs_remove(dvp, (char *)dentry->d_name.name, 
-			(struct cred *)cred, NULL, 0);
-	put_cred(cred);
+			(cred_t *)cred, NULL, 0);
+	(void)put_cred(cred);
 	tsd_exit();
 	SEXIT;
 	if (err)
@@ -280,7 +280,7 @@ lzfs_vnop_symlink (struct inode *dir, struct dentry *dentry,
 	vnode_t *dvp;
 	vnode_t *vp;
 	vattr_t *vap;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 	int err, se_err;
 	SENTRY;
 	err = checkname((char *)dentry->d_name.name);
@@ -299,9 +299,9 @@ lzfs_vnop_symlink (struct inode *dir, struct dentry *dentry,
 	vap->va_gid = cred->gid;
 
 	err = zfs_symlink(dvp, (char *)dentry->d_name.name, vap, 
-			(char *)symname, (struct cred *)cred , NULL, 0, &vp);
+			(char *)symname, (cred_t *)cred , NULL, 0, &vp);
 	kfree(vap);
-	put_cred(cred);
+	(void)put_cred(cred);
 	if (err) {
 		tsd_exit();
 		SEXIT;
@@ -325,7 +325,7 @@ lzfs_vnop_mkdir(struct inode *dir, struct dentry *dentry, int mode)
 	vnode_t *vp;
 	vnode_t *dvp;
 	vattr_t *vap;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 	int err, se_err;
 	SENTRY;
 	err = checkname((char *)dentry->d_name.name);
@@ -342,9 +342,9 @@ lzfs_vnop_mkdir(struct inode *dir, struct dentry *dentry, int mode)
 
 	dvp = LZFS_ITOV(dir);
 	err = zfs_mkdir(dvp, (char *)dentry->d_name.name, vap,
-			&vp, (struct cred *) cred, NULL, 0, NULL);
+			&vp, (cred_t *) cred, NULL, 0, NULL);
 	kfree(vap);
-	put_cred(cred);
+	(void)put_cred(cred);
 	if (err) {
 		tsd_exit();
 		SEXIT;
@@ -367,14 +367,14 @@ static int
 lzfs_vnop_rmdir(struct inode * dir, struct dentry *dentry)
 {
     vnode_t *dvp;
-    const struct cred *cred = get_current_cred();
+    const cred_t *cred = get_current_cred();
     int err;
 
     SENTRY;
     dvp = LZFS_ITOV(dir);
     err = zfs_rmdir(dvp, (char *)dentry->d_name.name, NULL, 
-            (struct cred *) cred, NULL, 0);
-    put_cred(cred);
+            (cred_t *) cred, NULL, 0);
+    (void)put_cred(cred);
 	tsd_exit();
     SEXIT;
     if (err) 
@@ -395,7 +395,7 @@ lzfs_vnop_mknod(struct inode * dir, struct dentry *dentry, int mode,
 	vnode_t *vp;
 	vnode_t *dvp;
 	vattr_t *vap;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 
 	int err, se_err;
 	SENTRY;
@@ -419,8 +419,8 @@ lzfs_vnop_mknod(struct inode * dir, struct dentry *dentry, int mode,
 	dvp = LZFS_ITOV(dir);
 
 	err = zfs_create(dvp, (char *)dentry->d_name.name, vap, 0, mode, 
-			 &vp, (struct cred *)cred, 0, NULL, NULL);
-	put_cred(cred);
+			 &vp, (cred_t *)cred, 0, NULL, NULL);
+	(void)put_cred(cred);
 	kfree(vap);
 	if (err) {
 		tsd_exit();
@@ -446,14 +446,14 @@ lzfs_vnop_rename (struct inode * old_dir, struct dentry * old_dentry,
 {
 	vnode_t *sdvp = LZFS_ITOV(old_dir);
 	vnode_t *tdvp = LZFS_ITOV(new_dir);
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 	int err;
 
 	SENTRY;
 	err = zfs_rename(sdvp, (char *)old_dentry->d_name.name, tdvp, 
-			(char *) new_dentry->d_name.name, (struct cred *)cred, 
+			(char *) new_dentry->d_name.name, (cred_t *)cred, 
 			NULL, 0);	
-	put_cred(cred);
+	(void)put_cred(cred);
 	tsd_exit();
 	SEXIT;
 	if (err)
@@ -468,7 +468,7 @@ lzfs_vnop_setattr(struct dentry *dentry, struct iattr *iattr)
 	vnode_t *vp = LZFS_ITOV(inode);
 	vattr_t *vap;
 	int mask = iattr->ia_valid;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 	int err;
 
 	SENTRY;
@@ -517,16 +517,16 @@ lzfs_vnop_setattr(struct dentry *dentry, struct iattr *iattr)
 		err = vmtruncate(inode, iattr->ia_size);
 		if (err) {
 			kfree(vap);
-			put_cred(cred);
+			(void)put_cred(cred);
 			tsd_exit();
 			SEXIT;
 			return err;
 		}
 	}
 
-	err = zfs_setattr(vp, vap, 0, (struct cred *)cred, NULL);
+	err = zfs_setattr(vp, vap, 0, (cred_t *)cred, NULL);
 	kfree(vap);
-	put_cred(cred);
+	(void)put_cred(cred);
 	tsd_exit();
 	SEXIT;
 	if (err)
@@ -553,7 +553,7 @@ static void *lzfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	struct inode *inode = dentry->d_inode;
 	vnode_t *vp         = LZFS_ITOV(inode);
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 	size_t  len  = i_size_read(inode);
 	char    *buf = NULL;
 	struct iovec iov;
@@ -563,7 +563,7 @@ static void *lzfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 	SENTRY;
 
 	if (NULL == (buf = kzalloc(len + 1, GFP_KERNEL))) {
-		put_cred(cred);
+		(void)put_cred(cred);
 		tsd_exit();
 		SEXIT;
 		return ERR_PTR(-ENOMEM);
@@ -579,7 +579,7 @@ static void *lzfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 	uio.uio_resid  = len;
 	uio.uio_segflg = UIO_SYSSPACE;
 
-	err = zfs_readlink(vp, &uio, (struct cred *)cred, NULL);
+	err = zfs_readlink(vp, &uio, (cred_t *)cred, NULL);
 	if (err) {
 		kfree(buf);
 		buf = ERR_PTR(-err);
@@ -587,7 +587,7 @@ static void *lzfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 		buf[len] = '\0';
 
 	nd_set_link(nd, buf);
-	put_cred(cred);
+	(void)put_cred(cred);
 	tsd_exit();
 	SEXIT;
 	return NULL;
@@ -599,7 +599,7 @@ lzfs_vnop_readlink(struct dentry *dentry, char __user *buf, int len)
 {
 	struct iovec iov = { .iov_base = buf, .iov_len = len};	
 	vnode_t *vp = LZFS_ITOV(dentry->d_inode);
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 	uio_t uio;
 	int err;
 
@@ -610,7 +610,7 @@ lzfs_vnop_readlink(struct dentry *dentry, char __user *buf, int len)
 	uio.uio_segflg = UIO_SYSSPACE;
 
 //	printk("%s inode %ld\n", __FUNCTION__, dentry->d_inode->i_ino);
-	err = zfs_readlink(vp, &uio, (struct cred *)cred, NULL);
+	err = zfs_readlink(vp, &uio, (cred_t *)cred, NULL);
 	if (err)
 		return PTR_ERR(ERR_PTR(-err));
 	SEXIT;
@@ -626,14 +626,14 @@ LZFS_VNOP_FSYNC_HANDLER(lzfs_vnop_fsync)
 {       
 	int err = 0;
 	vnode_t *vp = NULL;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 
 	SENTRY;
 
 	vp = LZFS_ITOV(filep->f_path.dentry->d_inode); 
-	err = zfs_fsync(vp, datasync, (struct cred *)cred, NULL);
+	err = zfs_fsync(vp, datasync, (cred_t *)cred, NULL);
 
-	put_cred(cred);
+	(void)put_cred(cred);
 	SEXIT;
 	return err;
 }
@@ -670,7 +670,7 @@ static inline ssize_t lzfs_read(vnode_t *vp, const char *buf, ssize_t len,
 	const cred_t *cred = get_current_cred();
 
 	err = zfs_read(vp, &uio, 0, (cred_t *) cred, NULL);
-	put_cred(cred);
+	(void)put_cred(cred);
 	if (unlikely(err))
 		return -err;
 	return (len - uio.uio_resid);
@@ -913,7 +913,7 @@ static inline ssize_t lzfs_write(vnode_t *vp, unsigned int file_flags,
 	const cred_t *cred = get_current_cred();
 
 	err = zfs_write(vp, &uio, file_flags, (cred_t *)cred, NULL);
-	put_cred(cred);
+	(void)put_cred(cred);
 	if (unlikely(err))
 		return -err;
 	return (len - uio.uio_resid);
@@ -1194,7 +1194,7 @@ const struct inode_operations zfs_inode_operations = {
 	.mknod          = lzfs_vnop_mknod,
 	.rename         = lzfs_vnop_rename,
 	.setattr        = lzfs_vnop_setattr,
-	.permission     = lzfs_vnop_permission,
+	//.permission     = lzfs_vnop_permission,
 	.setxattr       = generic_setxattr,
 	.getxattr       = generic_getxattr,
 	.listxattr      = lzfs_listxattr,
@@ -1225,7 +1225,7 @@ const struct inode_operations zfs_dir_inode_operations ={
 	.mknod          = lzfs_vnop_mknod,
 	.rename         = lzfs_vnop_rename,
 	.setattr        = lzfs_vnop_setattr,
-	.permission     = lzfs_vnop_permission,
+	//.permission     = lzfs_vnop_permission,
 	.setxattr       = generic_setxattr,
 	.getxattr       = generic_getxattr,
 	.listxattr      = lzfs_listxattr,
@@ -1243,7 +1243,10 @@ const struct file_operations zfs_dir_file_operations = {
 
 static int lzfs_readpage(struct file *file, struct page *page)
 {
+    
+#ifdef HAVE_CRED_STRUCT
     const cred_t *cred  = get_current_cred();
+#endif
     struct inode *inode = NULL;
     loff_t i_size       = 0;
     loff_t offset       = 0;
@@ -1302,7 +1305,7 @@ static int lzfs_readpage(struct file *file, struct page *page)
 out:
     unlock_page(page);
 //    printk(KERN_ERR "%s: <==\n", __FUNCTION__);
-    put_cred(cred);
+    (void)put_cred(cred);
     return err;
 }
 

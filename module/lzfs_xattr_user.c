@@ -55,7 +55,7 @@ lzfs_xattr_user_set(struct dentry *dentry, const char *name,
 	vnode_t *xvp;
 	vattr_t *vap;
 	int err = 0;
-	const struct cred *cred = get_current_cred();
+	const cred_t *cred = get_current_cred();
 	struct iovec iov = {
 		.iov_base = (void *) value,
 		.iov_len  = size,
@@ -76,13 +76,13 @@ lzfs_xattr_user_set(struct dentry *dentry, const char *name,
 	dvp = LZFS_ITOV(dentry->d_inode);
 #endif
 	err = zfs_lookup(dvp, NULL, &vp, NULL, LOOKUP_XATTR | CREATE_XATTR_DIR,
-			 NULL, (struct cred *) cred, NULL, NULL, NULL);
+			 NULL, (cred_t *) cred, NULL, NULL, NULL);
 	if(err) {
 		return -err;
 	}
 	if(!value) {
 		err =zfs_remove(vp, (char *) name,
-			(struct cred *)cred, NULL, 0);
+			(cred_t *)cred, NULL, 0);
 		return -err;
 	}
 	vap = kmalloc(sizeof(vattr_t), GFP_KERNEL);
@@ -97,14 +97,14 @@ lzfs_xattr_user_set(struct dentry *dentry, const char *name,
 	xattr_name = strncpy(xattr_name, "user.", 5);
 	xattr_name = strncat(xattr_name, name, strlen(name));
 	err = zfs_create(vp, xattr_name, vap, 0, 0644,
-			&xvp, (struct cred *)cred, 0, NULL, NULL);
+			&xvp, (cred_t *)cred, 0, NULL, NULL);
 	kfree(vap);
 	kfree(xattr_name);
 	if(err) {
 		return -err;
 	}
 	err = zfs_write(xvp, &uio, 0, (cred_t *)cred, NULL);
-	put_cred(cred);
+	(void)put_cred(cred);
 	if(err) {
 		return -err;
 	}
