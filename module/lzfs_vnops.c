@@ -627,15 +627,26 @@ lzfs_vnop_readlink(struct dentry *dentry, char __user *buf, int len)
 	return ((int) (len - uio.uio_resid));
 }
 #endif
-LZFS_VNOP_FSYNC_HANDLER(lzfs_vnop_fsync)
+
+#ifdef HAVE_3ARGS_FILE_FSYNC
+int lzfs_vnop_fsync(struct file *filep, struct dentry *dentry, int datasync)
+#else
+int lzfs_vnop_fsync(struct file *filep, int datasync)
+#endif
 {       
 	int err = 0;
 	vnode_t *vp = NULL;
 	const struct cred *cred = get_current_cred();
+	struct inode *inode;
 
 	SENTRY;
+#ifdef HAVE_3ARGS_FILE_FSYNC
+	inode = dentry->d_inode;
+#else
+	inode = file->f_mapping->host;
+#endif
 
-	vp = LZFS_ITOV(filep->f_path.dentry->d_inode); 
+	vp = LZFS_ITOV(inode);
 	err = zfs_fsync(vp, datasync, (struct cred *)cred, NULL);
 
 	put_cred(cred);
