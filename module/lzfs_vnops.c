@@ -27,7 +27,6 @@
 #include <sys/tsd.h>
 #include <linux/writeback.h>
 #include <lzfs_snap.h>
-#include <linux/fsync_compat.h>
 #include <linux/xattr.h>
 #include <lzfs_xattr.h>
 
