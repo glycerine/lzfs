@@ -261,7 +261,7 @@ lzfs_snapshot_iget(struct super_block *sb, unsigned long ino)
 	vp->v_count = 1;
 	mutex_exit(&vp->v_lock);
 	inode->i_mode |= (S_IFDIR | S_IRWXU);
-#ifdef HAVE_STRUCT_CRED
+#ifdef HAVE_CRED_STRUCT
 	inode->i_uid = current->cred->uid;
 	inode->i_gid = current->cred->gid;
 #else
@@ -370,7 +370,7 @@ lzfs_zfsctl_create(vfs_t *vfsp)
 	bcopy(&now, &(vp_zfsctl_dir->v_inode.i_atime),
 	      sizeof (timestruc_t));
 	bcopy(&now,&(vp_zfsctl_dir->v_inode.i_mtime),sizeof (timestruc_t));
-#ifdef HAVE_STRUCT_CRED
+#ifdef HAVE_CRED_STRUCT
 	inode_ctldir->i_uid = current->cred->uid;
 	inode_ctldir->i_gid = current->cred->gid;
 #else
@@ -408,7 +408,7 @@ lzfs_zfsctl_create(vfs_t *vfsp)
 	bcopy(&now,&(vp_snap_dir->v_inode.i_ctime),sizeof (timestruc_t));
 	bcopy(&now,&(vp_snap_dir->v_inode.i_atime),sizeof (timestruc_t));
 	bcopy(&now,&(vp_snap_dir->v_inode.i_mtime),sizeof (timestruc_t));
-#ifdef HAVE_STRUCT_CRED
+#ifdef HAVE_CRED_STRUCT
 	inode_snapdir->i_uid = current->cred->uid;
 	inode_snapdir->i_gid = current->cred->gid;
 #else
