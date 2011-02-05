@@ -642,7 +642,7 @@ int lzfs_vnop_fsync(struct file *filep, int datasync)
 #ifdef HAVE_3ARGS_FILE_FSYNC
 	inode = dentry->d_inode;
 #else
-	inode = file->f_mapping->host;
+	inode = filep->f_mapping->host;
 #endif
 
 	vp = LZFS_ITOV(inode);
