@@ -18,104 +18,69 @@
  */
 #define SS_DEBUG_SUBSYS SS_USER2
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 static int
 lzfs_xattr_user_get(struct inode *inode, const char *name,
 			void *buffer, size_t size)
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 static int
 lzfs_xattr_user_get(struct dentry *dentry, const char *name,
 			void *buffer, size_t size, int type)
 #endif
 {
+	char *xattr_name;
+	int rc;
+
 	if(strcmp(name,"") == 0) {
 		return -EINVAL;
 	}
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)	
-	return lzfs_xattr_get(inode, name, buffer, size, 0);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
-	return lzfs_xattr_get(dentry->d_inode, name, buffer, size, 0);
+    xattr_name = kzalloc(strlen(name) + 6, GFP_KERNEL);
+	if (!xattr_name)
+		return -ENOMEM;
+
+	xattr_name = strncpy(xattr_name, "user.", 5);
+	xattr_name = strncat(xattr_name, name, strlen(name));
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)	
+	rc = lzfs_xattr_get(inode, name, buffer, size, xattr_name);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
+	rc = lzfs_xattr_get(dentry->d_inode, name, buffer, size, xattr_name);
 #endif
+	kfree(xattr_name);
+	return rc;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 static int      
 lzfs_xattr_user_set(struct inode *inode, const char *name,
 			const void *value, size_t size, int flags)
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 static int
 lzfs_xattr_user_set(struct dentry *dentry, const char *name,
 			const void *value, size_t size, int flags, int type)
 #endif
-{               
-
-	vnode_t *vp;
-	vnode_t *dvp;
-	vnode_t *xvp;
-	vattr_t *vap;
-	int err = 0;
-	const cred_t *cred = get_current_cred();
-	struct iovec iov = {
-		.iov_base = (void *) value,
-		.iov_len  = size,
-	};
-
-	char *xattr_name = NULL;
-	uio_t uio = {
-		.uio_iov     = &iov,
-		.uio_resid   = size,
-		.uio_iovcnt  = 1,
-		.uio_loffset = (offset_t)0,
-		.uio_limit   = MAXOFFSET_T,
-		.uio_segflg  = UIO_SYSSPACE,
-	};
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
-	dvp = LZFS_ITOV(inode);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
-	dvp = LZFS_ITOV(dentry->d_inode);
+{
+	char *xattr_name;
+	int rc;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
+	struct inode *inode = dentry->d_inode;
 #endif
-	err = zfs_lookup(dvp, NULL, &vp, NULL, LOOKUP_XATTR | CREATE_XATTR_DIR,
-			 NULL, (cred_t *) cred, NULL, NULL, NULL);
-	if(err) {
-		return -err;
-	}
-	if(!value) {
-		err =zfs_remove(vp, (char *) name,
-			(cred_t *)cred, NULL, 0);
-		return -err;
-	}
-	vap = kmalloc(sizeof(vattr_t), GFP_KERNEL);
-	ASSERT(vap != NULL);
-	memset(vap, 0, sizeof(vap));
-	vap->va_type = VREG;
-	vap->va_mode = 0644;
-	vap->va_mask = AT_TYPE|AT_MODE;
-	vap->va_uid = current_fsuid();
-	vap->va_gid = current_fsgid();
 	xattr_name = kzalloc(strlen(name) + 6, GFP_KERNEL);
+	if (!xattr_name)
+		return -ENOMEM;
 	xattr_name = strncpy(xattr_name, "user.", 5);
 	xattr_name = strncat(xattr_name, name, strlen(name));
-	err = zfs_create(vp, xattr_name, vap, 0, 0644,
-			&xvp, (cred_t *)cred, 0, NULL, NULL);
-	kfree(vap);
+	rc = lzfs_xattr_set(inode, name, (void *) value, size, xattr_name);
 	kfree(xattr_name);
-	if(err) {
-		return -err;
-	}
-	err = zfs_write(xvp, &uio, 0, (cred_t *)cred, NULL);
-	(void)put_cred(cred);
-	if(err) {
-		return -err;
-	}
-	return err;
+	return rc;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 static size_t
 lzfs_xattr_user_list(struct inode *inode, char *list, size_t list_size,
 			const char *name, size_t name_len)
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 static size_t
 lzfs_xattr_user_list(struct dentry *dentry, char *list, size_t list_size,
 			const char *name, size_t name_len, int type)

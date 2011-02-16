@@ -258,6 +258,7 @@ lzfs_fill_super(struct super_block *sb, void *data, int silent)
 	sb->s_op	  =	&lzfs_ops;
 	sb->s_time_gran	  =	1;
 	sb->s_flags	  =	MS_ACTIVE;
+	sb->s_flags       |=     MS_POSIXACL;
 	sb->s_export_op	  =     &zfs_export_ops;
 	sb->s_xattr       =     lzfs_xattr_handlers;
 	error = zfs_domount(vfsp, data);
