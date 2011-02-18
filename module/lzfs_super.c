@@ -62,6 +62,7 @@ extern int zfs_statvfs(vfs_t *vfsp, struct statvfs64 *statp);
 extern void lzfs_zfsctl_create(vfs_t *);
 extern void lzfs_zfsctl_destroy(vfs_t *);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36)
 /* TODO
  * Following checking needs part of lzfs/spl configuration step.
  */
@@ -111,6 +112,34 @@ lzfs_clear_vnode(struct inode *inode)
 	vp->v_data = NULL;
 	SEXIT;
 }
+#else
+static void
+lzfs_evict_vnode(struct inode *inode)
+{
+	loff_t oldsize = i_size_read(inode);
+	vnode_t		*vp;
+
+	i_size_write(inode, 0);
+	truncate_pagecache(inode, oldsize, 0);
+
+	if (inode->i_nlink)
+		return;
+
+
+	end_writeback(inode);
+
+	/* delete the inode */
+	vp = LZFS_ITOV(inode);
+
+	ASSERT(vp->v_count == 1);
+	if(inode->i_ino != LZFS_ZFSCTL_INO_ROOT 
+			&& inode->i_ino != LZFS_ZFSCTL_INO_SNAPDIR
+			&& inode->i_private == NULL ) { 
+		zfs_inactive(vp, NULL, NULL);
+	}
+	vp->v_data = NULL;
+}
+#endif
 
 static void
 lzfs_put_super(struct super_block *sb)
@@ -231,8 +260,12 @@ static int lzfs_show_options(struct seq_file *seq, struct vfsmount *vfsmnt)
 
 static const struct super_operations lzfs_ops = {
 	.alloc_inode	=	lzfs_alloc_vnode,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36)
 	.clear_inode    =	lzfs_clear_vnode,
 	.delete_inode   =   lzfs_delete_vnode,
+#else
+	.evict_inode    = lzfs_evict_vnode,
+#endif
 	.destroy_inode	=	lzfs_destroy_vnode,
 	.put_super	=	lzfs_put_super,
 	.statfs		= 	lzfs_statfs,
