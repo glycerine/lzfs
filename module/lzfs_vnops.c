@@ -95,6 +95,7 @@ lzfs_vnop_create(struct inode *dir, struct dentry *dentry, int mode,
 	vnode_t *vp;
 	vnode_t *dvp;
 	vattr_t *vap;
+	struct inode *inode;
 	const cred_t *cred = get_current_cred();
 
 	int err;
@@ -124,14 +125,25 @@ lzfs_vnop_create(struct inode *dir, struct dentry *dentry, int mode,
 		err = -err;
 		goto failed;
 	}
-	d_instantiate(dentry, LZFS_VTOI(vp));
+	
+	inode = LZFS_VTOI(vp);
+
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,31)
-	if ((err = lzfs_acl_init(dentry->d_inode, dir))) {
+	if ((err = lzfs_acl_init(inode, dir))) {
 		/* XXX need more error handling  */
+		unlock_new_inode(inode);
+		iput(inode);
 		goto failed;
 	}
 #endif
-	err = lzfs_init_security(dentry, dir);
+	if ((err = lzfs_init_security(inode, dir))) {
+		/* XXX need more error handling  */
+		unlock_new_inode(inode);
+		iput(inode);
+		goto failed;
+	}
+	d_instantiate(dentry, inode);
+	unlock_new_inode(inode);
 failed:
 	tsd_exit();
 	SEXIT;
@@ -280,8 +292,10 @@ lzfs_vnop_symlink (struct inode *dir, struct dentry *dentry,
 	vnode_t *dvp;
 	vnode_t *vp;
 	vattr_t *vap;
+	struct inode *inode;
 	const cred_t *cred = get_current_cred();
 	int err;
+
 	SENTRY;
 	err = checkname((char *)dentry->d_name.name);
 	if(err)
@@ -306,15 +320,26 @@ lzfs_vnop_symlink (struct inode *dir, struct dentry *dentry,
 		err = -err;
 		goto failed;
 	}
-	d_instantiate(dentry, LZFS_VTOI(vp));
+
+	inode = LZFS_VTOI(vp);
+
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,31)
-	err = lzfs_acl_init(dentry->d_inode, dir);
+	err = lzfs_acl_init(inode, dir);
 	if(err) {
 		/* XXX error handling */
+		unlock_new_inode(inode);
+		iput(inode);
 		goto failed;
 	}
 #endif
-	err = lzfs_init_security(dentry, dir);
+	if ((err = lzfs_init_security(inode, dir))) {
+		/* XXX error handling */
+		unlock_new_inode(inode);
+		iput(inode);
+		goto failed;
+	}
+	d_instantiate(dentry, inode);
+	unlock_new_inode(inode);
 failed:
 	tsd_exit();
 	SEXIT;
@@ -327,8 +352,10 @@ lzfs_vnop_mkdir(struct inode *dir, struct dentry *dentry, int mode)
 	vnode_t *vp;
 	vnode_t *dvp;
 	vattr_t *vap;
+	struct inode *inode;
 	const cred_t *cred = get_current_cred();
 	int err;
+
 	SENTRY;
 	err = checkname((char *)dentry->d_name.name);
 	if(err)
@@ -351,15 +378,27 @@ lzfs_vnop_mkdir(struct inode *dir, struct dentry *dentry, int mode)
 		err = -err;
 		goto failed;
 	}
-	d_instantiate(dentry, LZFS_VTOI(vp));
+
+	inode = LZFS_VTOI(vp);
+
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,31)
-	err = lzfs_acl_init(dentry->d_inode,dir);
+	err = lzfs_acl_init(inode, dir);
 	if(err) {
 		/* XXX error handling */
+		unlock_new_inode(inode);
+		iput(inode);
 		goto failed;
 	}
 #endif
-	err = lzfs_init_security(dentry, dir);
+	if ((err = lzfs_init_security(inode, dir))) {
+		/* XXX error handling */
+		unlock_new_inode(inode);
+		iput(inode);
+		goto failed;
+	}
+
+	d_instantiate(dentry, inode);
+	unlock_new_inode(inode);
 failed:
 	tsd_exit();
 	SEXIT;
@@ -399,6 +438,7 @@ lzfs_vnop_mknod(struct inode * dir, struct dentry *dentry, int mode,
 	vnode_t *dvp;
 	vattr_t *vap;
 	const cred_t *cred = get_current_cred();
+	struct inode *inode;
 
 	int err;
 	SENTRY;
@@ -429,17 +469,28 @@ lzfs_vnop_mknod(struct inode * dir, struct dentry *dentry, int mode,
 		err = -err;
 		goto failed;
 	}
-	d_instantiate(dentry, LZFS_VTOI(vp));
-	init_special_inode(dentry->d_inode,mode,rdev);
+
+	inode = LZFS_VTOI(vp);
+	init_special_inode(inode, mode, rdev);
+
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,31)
-	err = lzfs_acl_init(dentry->d_inode,dir);
+	err = lzfs_acl_init(inode, dir);
 	if(err) {
 		/* XXX error handling */
+		unlock_new_inode(inode);
+		iput(inode);
 		goto failed;
 	}
 #endif
-	err = lzfs_init_security(dentry, dir);
+	if ((err = lzfs_init_security(inode, dir))) {
+		/* XXX error handling */
+		unlock_new_inode(inode);
+		iput(inode);
+		goto failed;
+	}
 
+	d_instantiate(dentry, inode);
+	unlock_new_inode(inode);
 failed:
 	tsd_exit();
 	SEXIT;

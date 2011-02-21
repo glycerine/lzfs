@@ -53,21 +53,11 @@ lzfs_xattr_security_get(struct dentry *dentry, const char *name,
 	return rc;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
-static int      
-lzfs_xattr_security_set(struct inode *inode, const char *name,
-                    const void *value, size_t size, int flags)
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
-static int
-lzfs_xattr_security_set(struct dentry *dentry, const char *name,
-                    const void *value, size_t size, int flags, int type)
-#endif
+int lzfs_xattr_security_set2(struct inode *inode, const char *name, 
+		const void *value, size_t size, int flags)
 {
 	char *xattr_name;
 	int rc;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
-	struct inode *inode = dentry->d_inode;
-#endif
 	xattr_name = kzalloc(strlen(name) + 10, GFP_KERNEL);
 	if (!xattr_name)
 		return -ENOMEM;
@@ -78,6 +68,22 @@ lzfs_xattr_security_set(struct dentry *dentry, const char *name,
 	rc = lzfs_xattr_set(inode, name, (void *) value, size, xattr_name);
 	kfree(xattr_name);
 	return rc;
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
+static int      
+lzfs_xattr_security_set(struct inode *inode, const char *name,
+                    const void *value, size_t size, int flags)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
+static int
+lzfs_xattr_security_set(struct dentry *dentry, const char *name,
+                    const void *value, size_t size, int flags, int type)
+#endif
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
+	struct inode *inode = dentry->d_inode;
+#endif
+	return lzfs_xattr_security_set2(inode, name, value, size, flags);
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
@@ -101,24 +107,29 @@ lzfs_xattr_security_list(struct dentry *dentry, char *list, size_t list_size,
 }
 
 int
-lzfs_init_security(struct dentry *dentry, struct inode *dir)
+lzfs_init_security(struct inode *inode, struct inode *dir)
 {
 	int err;
 	size_t len;
 	void *value;
 	char *name;
 
-	err = security_inode_init_security(dentry->d_inode, dir, &name, &value, &len);
+	err = security_inode_init_security(inode, dir, &name, &value, &len);
 	if (err) {
 		if (err == -EOPNOTSUPP)
 			return 0;
 		return err;
 	}
+#if 0
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)
 	err = lzfs_xattr_security_set(dentry->d_inode, name, value, len, 0);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 	err = lzfs_xattr_security_set(dentry, name, value, len, 0, 0);
 #endif
+#endif
+
+	err = lzfs_xattr_security_set2(inode, name, value, len, 0);
+	
 	kfree(name);
 	kfree(value);
 	return err;

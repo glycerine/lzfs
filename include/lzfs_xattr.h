@@ -31,7 +31,7 @@ int
 lzfs_removexattr(struct dentry *dentry, const char *name);
 
 int
-lzfs_init_security(struct dentry *dentry, struct inode *dir);
+lzfs_init_security(struct inode *inode, struct inode *dir);
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,31)
 extern int
