@@ -41,6 +41,7 @@ lzfs_xattr_set(struct inode *inode, const char *name,
         .uio_limit   = MAXOFFSET_T,
         .uio_segflg  = UIO_SYSSPACE,
     };
+	struct inode *xinode;
 
 	dvp = LZFS_ITOV(inode);
 
@@ -66,11 +67,16 @@ lzfs_xattr_set(struct inode *inode, const char *name,
     err = zfs_create(vp, (char *) xattr_name, vap, 0, 0644,
             &xvp, (cred_t *)cred, 0, NULL, NULL);
     kfree(vap);
-    if(err)
+	xinode = LZFS_VTOI(xvp);
+    if(err) {
+		unlock_new_inode(xinode);
+		iput(xinode);
         return -err;
+	}
     err = zfs_write(xvp, &uio, 0, (cred_t *)cred, NULL);
     (void)put_cred(cred);
 
+	unlock_new_inode(xinode);
 	return (err ? -err : 0);
 }
 
