@@ -122,11 +122,10 @@ lzfs_evict_vnode(struct inode *inode)
 	i_size_write(inode, 0);
 	truncate_pagecache(inode, oldsize, 0);
 
+	end_writeback(inode);
+
 	if (inode->i_nlink)
 		return;
-
-
-	end_writeback(inode);
 
 	/* delete the inode */
 	vp = LZFS_ITOV(inode);
